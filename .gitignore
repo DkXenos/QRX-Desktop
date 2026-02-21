@@ -1,0 +1,17 @@
+# Virtual environment
+.venv/
+
+# PyInstaller output
+build/
+dist/
+*.spec
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
