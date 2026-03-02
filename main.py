@@ -5,6 +5,23 @@ import qrcode
 
 
 def get_desktop_path() -> str:
+    if os.name == "nt":  # Windows
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders",
+            )
+            desktop, _ = winreg.QueryValueEx(key, "Desktop")
+            winreg.CloseKey(key)
+            if desktop and os.path.isdir(desktop):
+                return desktop
+        except Exception:
+            pass
+        # Fallback: check common OneDrive-redirected path
+        onedrive_desktop = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
+        if os.path.isdir(onedrive_desktop):
+            return onedrive_desktop
     return os.path.join(os.path.expanduser("~"), "Desktop")
 
 
