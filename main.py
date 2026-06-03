@@ -1,35 +1,75 @@
-import os
+import sys
+import platform
 import tkinter as tk
 from tkinter import messagebox
+from pathlib import Path
+
 import qrcode
 
 
-def get_desktop_path() -> str:
-    if os.name == "nt":  # Windows
+def get_desktop_path() -> Path:
+    """
+    Return the path to the user's Desktop directory.
+
+    Resolution order
+    ────────────────
+    Windows:
+      1. Registry -> HKCU\\...\\User Shell Folders  "Desktop"
+         (handles OneDrive redirects *and* localized folder names like "Escritorio")
+      2. ~/OneDrive/Desktop
+      3. ~/Desktop
+      4. Home directory (ultimate fallback)
+
+    macOS / Linux:
+      1. ~/Desktop
+      2. Home directory (ultimate fallback)
+    """
+    home = Path.home()
+
+    if sys.platform == "win32":
+        # ── 1. Windows Registry (most reliable) ──────────────────────
         try:
             import winreg
+
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
-                r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders",
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
             )
-            desktop, _ = winreg.QueryValueEx(key, "Desktop")
+            raw_value, _ = winreg.QueryValueEx(key, "Desktop")
             winreg.CloseKey(key)
-            if desktop and os.path.isdir(desktop):
+
+            # The registry value may contain %USERPROFILE% or other env-vars.
+            import os
+            expanded = os.path.expandvars(raw_value)
+            desktop = Path(expanded)
+
+            if desktop.is_dir():
                 return desktop
         except Exception:
             pass
-        # Fallback: check common OneDrive-redirected path
-        onedrive_desktop = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
-        if os.path.isdir(onedrive_desktop):
+
+        # ── 2. OneDrive-redirected Desktop ────────────────────────────
+        onedrive_desktop = home / "OneDrive" / "Desktop"
+        if onedrive_desktop.is_dir():
             return onedrive_desktop
-    return os.path.join(os.path.expanduser("~"), "Desktop")
+
+    # ── 3. Standard ~/Desktop ─────────────────────────────────────
+    standard_desktop = home / "Desktop"
+    if standard_desktop.is_dir():
+        return standard_desktop
+
+    # ── 4. Ultimate fallback: home directory ──────────────────────
+    return home
 
 
-def generate_qr_code(url: str, filename: str) -> str:
+def generate_qr_code(url: str, filename: str) -> Path:
+    """Generate a QR-code JPEG and return the saved file path."""
     desktop = get_desktop_path()
+
     if not filename.lower().endswith(".jpg"):
         filename = filename + ".jpg"
-    output_path = os.path.join(desktop, filename)
+
+    output_path = desktop / filename
 
     qr = qrcode.QRCode(
         version=1,
@@ -41,7 +81,7 @@ def generate_qr_code(url: str, filename: str) -> str:
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-    img.save(output_path, format="JPEG")
+    img.save(str(output_path), format="JPEG")
     return output_path
 
 
@@ -57,10 +97,10 @@ def on_generate():
         messagebox.showerror("Error", "Filename cannot be empty.")
         return
 
-    desktop = get_desktop_path()
-    if not os.path.isdir(desktop):
+    save_dir = get_desktop_path()
+    if not save_dir.is_dir():
         messagebox.showerror(
-            "Error", f"Desktop directory not found at '{desktop}'."
+            "Error", f"Save directory not found at '{save_dir}'."
         )
         return
 
@@ -182,10 +222,11 @@ filename_entry = tk.Entry(
 )
 filename_entry.grid(row=5, column=0, columnspan=2, padx=20, pady=(0, 8), ipady=8)
 
-# ── Hint ───────────────────────────────────────────────
+# ── Hint (shows the actual resolved save directory) ────
+_save_dir = get_desktop_path()
 hint_label = tk.Label(
     root,
-    text="File will be saved as .jpg to your Desktop",
+    text=f"File will be saved as .jpg to {_save_dir}",
     font=FONT_HINT,
     bg=BG,
     fg=SUBTEXT,
