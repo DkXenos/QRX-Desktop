@@ -20,8 +20,8 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
         python: ["3.10", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -r requirements.txt zxing-cpp
@@ -33,10 +33,17 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             command -v xvfb-run || { sudo apt-get update -q && sudo apt-get install -yq xvfb; }
-            xvfb-run -a python -m unittest -v
+            xvfb-run -a python -m unittest -v 2>&1 | tee tests.log
           else
-            python -m unittest -v
+            python -m unittest -v 2>&1 | tee tests.log
           fi
+      - name: Show the result on the run page
+        if: always()
+        shell: bash
+        run: |
+          result=$(grep -E '^(Ran |OK|FAILED)' tests.log | tr -d '\r' | paste -sd' ' - || true)
+          skipped=$(grep -o '^test_[a-z_]* .*\.\.\. skipped' tests.log | cut -d' ' -f1 | paste -sd, - || true)
+          echo "::notice title=Tests on $RUNNER_OS / Python ${{ matrix.python }}::$result. Skipped: ${skipped:-none}"
 
   build:
     name: Build (${{ matrix.os }})
@@ -50,8 +57,8 @@ jobs:
           - os: macos-latest
             file: QRX-Desktop-mac.zip
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: python build.py
@@ -66,7 +73,7 @@ jobs:
             $app = Get-Process QRX-Desktop -ErrorAction SilentlyContinue |
               Where-Object MainWindowTitle -like "QRX Desktop*"
             if ($app) {
-              "Window is up after $second s: $($app.MainWindowTitle)"
+              "::notice title=App opened on Windows::Window '$($app.MainWindowTitle)' appeared after $second s"
               Stop-Process -Name QRX-Desktop
               exit 0
             }
@@ -83,13 +90,13 @@ jobs:
           kill -0 $! || { echo "The app quit on its own"; exit 1; }
           kill $!
           if grep -q Traceback app.log; then exit 1; fi
-          echo "The app is still running after 15 s"
+          echo "::notice title=App opened on macOS::Still running after 15 s with no errors"
 
       - name: Zip the Mac app
         if: runner.os == 'macOS'
         run: ditto -c -k --keepParent dist/QRX-Desktop.app dist/QRX-Desktop-mac.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.file }}
           path: dist/${{ matrix.file }}
@@ -102,10 +109,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             QRX-Desktop.exe

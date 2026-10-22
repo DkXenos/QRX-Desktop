@@ -230,6 +230,8 @@ class AppTests(FakeHomeTestCase):
         try:
             self.root = tk.Tk()
         except tk.TclError as exc:
+            if os.environ.get("CI"):  # CI machines have a (virtual) screen: a failure here is real
+                raise
             self.skipTest(f"no display: {exc}")
         self.addCleanup(self.root.destroy)
         self.root.withdraw()
