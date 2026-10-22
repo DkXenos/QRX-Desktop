@@ -1,109 +1,64 @@
 # QRX-Desktop
 
-A cross-platform desktop GUI app for generating QR codes from URLs. Built with Python and Tkinter — no terminal needed.
+Turn any link into a QR code image. QRX Desktop is one small Python script ([main.py](main.py)) that runs the same way on Windows, macOS and Linux.
+
+1. Paste a link.
+2. Type a file name.
+3. Click **Generate QR Code** (or press Enter).
+
+The image is saved as a `.jpg` on your **Desktop**. On Windows that is wherever your Desktop really is, including one that OneDrive backup moved (for example `OneDrive - Universitas Ciputra\Desktop`). Click **Change…** to save somewhere else.
 
 ---
 
-## Features
+## Download (no Python needed)
 
-- Simple, clean GUI window
-- Enter any URL/link and an output filename
-- QR code is saved as a `.jpg` directly to your Desktop
-- Success and error messages shown in the app (no terminal)
-- Works on macOS and Windows
+Get the files from the latest [release](../../releases/latest):
 
----
+| Computer | File | First launch |
+|----------|------|--------------|
+| Windows 10/11 | `QRX-Desktop.exe` | Double-click it. If you see "Windows protected your PC", click **More info → Run anyway**. |
+| Mac (Apple silicon) | `QRX-Desktop-mac.zip` | Unzip it and open `QRX-Desktop.app`. If macOS blocks it, open **System Settings → Privacy & Security** and click **Open Anyway**. |
 
-## For Users (No Python Required)
-
-Download the latest release for your platform from the [Releases page](../../releases):
-
-| Platform | File |
-|----------|------|
-| macOS    | `QRX-Desktop-mac.zip` → extract and run `QRX-Desktop.app` |
-| Windows  | `QRX-Desktop.exe` → double-click to run |
-
-> On macOS, if you see a security warning, right-click the `.app` → Open → Open anyway.
+On an Intel Mac or on Linux, run it from source (below).
 
 ---
 
-## For Developers
+## Run from source (any OS)
 
-### Prerequisites
-
-- Python 3.12
-- `pip`
-
-### Setup
+Needs Python 3.9 or newer.
 
 ```bash
-# Clone the repo
-git clone https://github.com/jaysn/QRX-Desktop.git
-cd QRX-Desktop
-
-# Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate        # macOS/Linux
-# .venv\Scripts\activate.bat     # Windows
-
-# Install dependencies
 pip install -r requirements.txt
-```
-
-### Run the App
-
-```bash
 python main.py
 ```
 
-### Dependencies
+On Linux you may also need Tkinter: `sudo apt install python3-tk`.
 
-| Package | Purpose |
-|---------|---------|
-| `qrcode[pil]` | QR code generation |
-| `Pillow` | Image rendering and saving |
-| `pyinstaller` | Packaging into standalone executables |
-
-> Tkinter is built into Python — no separate install needed.
-
----
-
-## Building a Standalone Executable
-
-> ⚠️ PyInstaller can only build for the OS it's run on.
-
-### macOS
+## Test
 
 ```bash
-chmod +x build.sh
-./build.sh
+pip install zxing-cpp   # optional: lets the tests scan the QR images they make
+python -m unittest -v
 ```
 
-Output: `dist/QRX-Desktop.app`
+The tests cover a Desktop that OneDrive moved or renamed, PCs with no Desktop at all, Linux desktops in other languages, file names Windows rejects, folders you can't write to, and the window itself.
 
-### Windows
-
-```bat
-build.bat
-```
-
-Output: `dist\QRX-Desktop.exe`
-
----
-
-## Automated Cross-Platform Builds (GitHub Actions)
-
-Push a version tag to trigger automatic builds for both macOS and Windows:
+## Build the double-click app
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+python build.py
 ```
 
-The workflow (`.github/workflows/build.yml`) will:
-1. Build `QRX-Desktop.app` on a macOS runner
-2. Build `QRX-Desktop.exe` on a Windows runner
-3. Attach both to a GitHub Release automatically
+It's one command on every OS. It installs what it needs, runs the tests, and builds the app for the computer it runs on: `dist/QRX-Desktop.exe` on Windows, `dist/QRX-Desktop.app` on macOS. No computer can build apps for the other operating systems, so GitHub Actions builds both for you.
+
+## Release
+
+```bash
+git tag v2.1.0
+git push origin v2.1.0
+```
+
+[GitHub Actions](.github/workflows/build.yml) runs the tests on Windows, macOS and Linux, runs `build.py` on Windows and macOS, checks that each app opens, and attaches `QRX-Desktop.exe` and `QRX-Desktop-mac.zip` to a new release. Every other push runs the same tests and builds without releasing.
 
 ---
 
@@ -111,16 +66,13 @@ The workflow (`.github/workflows/build.yml`) will:
 
 ```
 QRX-Desktop/
-├── .github/
-│   └── workflows/
-│       └── build.yml       # CI/CD: cross-platform builds
-├── assets/
-│   └── icon.png            # App icon (optional)
-├── main.py                 # Main GUI app (Tkinter)
-├── requirements.txt        # Python dependencies
-├── build.sh                # macOS build script
-├── build.bat               # Windows build script
-└── README.md               # This file
+├── main.py                  # The app
+├── test_main.py             # Tests
+├── build.py                 # Builds the double-click app (any OS)
+├── requirements.txt         # Python packages the app needs
+├── assets/icon.png          # Optional app icon (icon.ico / icon.icns also work)
+└── .github/workflows/
+    └── build.yml            # Tests, builds and releases on GitHub
 ```
 
 ---
@@ -128,4 +80,3 @@ QRX-Desktop/
 ## Developer
 
 **jaysn** — based on the original [QRX CLI tool](../QRX)
-# QRX-Deskop
